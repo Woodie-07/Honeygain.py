@@ -20,6 +20,7 @@ else:
     print("Failed to log in")
     
 print("Earnings Stats: " + str(user.earningsStats()))
+print("JumpTask Earnings Stats: " + str(user.jtEarningsStats()))
 print("Balance: " + str(user.balance()))
 print("Referral Earnings: " + str(user.refEarnings()))
 print("Earnings Today: " + str(user.earningsToday()))

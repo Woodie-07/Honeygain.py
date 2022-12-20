@@ -1,39 +1,43 @@
 import requests, datetime
 from requests.structures import CaseInsensitiveDict
 
-def makeHoneygainRequest(endpoint: str, reqType: str, headers: dict, timeout: int, v2: bool, data: dict = {}, proxy: dict = {}) -> requests.Response:
+_apiURL = "https://dashboard.honeygain.com/api/"
+
+def _makeHoneygainRequest(
+    endpoint: str,
+    method: str,
+    headers: dict,
+    timeout: int,
+    v2: bool,
+    data: dict = None,
+    proxy: dict = None,
+) -> requests.Response:
     """
     Make a request to the Honeygain API to a given endpoint
     :param endpoint: the API endpoint to request
-    :param reqType: GET, POST, DELETE or PUT
+    :param method: GET, POST, DELETE or PUT
     :param headers: authentication headers to send with the request
+    :param timeout: the amount of time to wait for a response
+    :param v2: whether or not to use the v2 API
     :param data (optional): data to send along with the requst
+    :param proxy (optional): a dictionary containing the proxy to use
     :return: response object
     """
-    
-    if reqType == "GET": # if we need to do a GET request
-        if proxy != {}: # if we need to use a proxy
-            resp = requests.get(("https://dashboard.honeygain.com/api/v1/" if v2 == False else "https://dashboard.honeygain.com/api/v2/") + endpoint, headers=headers, proxies=proxy, timeout=timeout) # do the GET request with the headers required to the correct endpoint using proxy
-        else:
-            resp = requests.get(("https://dashboard.honeygain.com/api/v1/" if v2 == False else "https://dashboard.honeygain.com/api/v2/") + endpoint, headers=headers, timeout=timeout) # do the GET request with the headers required to the correct endpoint
-    elif reqType == "POST": # if we need to do a POST request
-        if proxy != {}: # if we need to use a proxy
-            resp = requests.post(("https://dashboard.honeygain.com/api/v1/" if v2 == False else "https://dashboard.honeygain.com/api/v2/") + endpoint, headers=headers, data=data, proxies=proxy, timeout=timeout) # do the POST request with the headers required to the correct endpoint with the data using proxy
-        else:
-            resp = requests.post(("https://dashboard.honeygain.com/api/v1/" if v2 == False else "https://dashboard.honeygain.com/api/v2/") + endpoint, headers=headers, data=data, timeout=timeout) # do the POST request with the headers required to the correct endpoint with the data
-    elif reqType == "DELETE": # if we need to do a DELETE request
-        if proxy != {}: # if we need to use a proxy
-            resp = requests.delete(("https://dashboard.honeygain.com/api/v1/" if v2 == False else "https://dashboard.honeygain.com/api/v2/") + endpoint, headers=headers, proxies=proxy, timeout=timeout) # do the DELETE request with the headers required to the correct endpoint using proxy
-        else:
-            resp = requests.delete(("https://dashboard.honeygain.com/api/v1/" if v2 == False else "https://dashboard.honeygain.com/api/v2/") + endpoint, headers=headers, timeout=timeout) # do the DELETE request with the headers required to the correct endpoint
-    elif reqType == "PUT": # if we need to do a PUT request
-        if proxy != {}: # if we need to use a proxy
-            resp = requests.put(("https://dashboard.honeygain.com/api/v1/" if v2 == False else "https://dashboard.honeygain.com/api/v2/") + endpoint, headers=headers, data=data, proxies=proxy, timeout=timeout) # do the PUT request with the headers required to the correct endpoint with the data using proxy
-        else:
-            resp = requests.put(("https://dashboard.honeygain.com/api/v1/" if v2 == False else "https://dashboard.honeygain.com/api/v2/") + endpoint, headers=headers, data=data, timeout=timeout) # do the PUT request with the headers required to the correct endpoint with the data
-    else:
-        return None
+
+
+    url = _apiURL + ("v2/" if v2 else "v1/") + endpoint
+
+    resp = requests.request(
+        method,
+        url,
+        json=data,
+        proxies=proxy,
+        timeout=timeout,
+        headers=headers
+    )
+
     return resp
+
 
 class User:
     headers = {}
@@ -59,11 +63,9 @@ class User:
         """
         
         if self.proxy != {}: # if we have a proxy
-            resp = makeHoneygainRequest("earnings/stats", "GET", {"Authorization": "Bearer " + token}, self.timeout, False, proxy=self.proxy) # test the login data with the user_data endpoint with the proxy
+            resp = _makeHoneygainRequest("earnings/stats", "GET", {"Authorization": "Bearer " + token}, self.timeout, False, proxy=self.proxy) # test the login data with the user_data endpoint with the proxy
         else:
-            resp = makeHoneygainRequest("earnings/stats", "GET", {"Authorization": "Bearer " + token}, self.timeout, False) # test the login data with the user_data endpoint
-        
-        print(resp.json())
+            resp = _makeHoneygainRequest("earnings/stats", "GET", {"Authorization": "Bearer " + token}, self.timeout, False) # test the login data with the user_data endpoint
 
         if resp.status_code == 200: # if the headers were valid
             self.headers = {"Authorization": "Bearer " + token} # save the headers to the variable
@@ -71,6 +73,23 @@ class User:
             return True
         return False
         
+    def jtEarningsStats(self) -> dict:
+        """
+        Get data about the earning stats of the logged in user
+        :return: a dictionary containing the stats
+        """
+        
+        if self.proxy != {}: # if we have a proxy
+            resp = _makeHoneygainRequest("jt-earnings/stats", "GET", self.headers, self.timeout, False, proxy=self.proxy) # get the user data with the proxy
+        else:
+            resp = _makeHoneygainRequest("jt-earnings/stats", "GET", self.headers, self.timeout, False) # get the user data
+        
+        try:
+            jsonData = resp.json() # attempt to get the JSON data
+        except:
+            return None # if it failed return NoneType
+        return jsonData
+    
     def earningsStats(self) -> dict:
         """
         Get data about the earning stats of the logged in user
@@ -78,9 +97,9 @@ class User:
         """
         
         if self.proxy != {}: # if we have a proxy
-            resp = makeHoneygainRequest("earnings/stats", "GET", self.headers, self.timeout, False, proxy=self.proxy) # get the user data with the proxy
+            resp = _makeHoneygainRequest("earnings/stats", "GET", self.headers, self.timeout, False, proxy=self.proxy) # get the user data with the proxy
         else:
-            resp = makeHoneygainRequest("earnings/stats", "GET", self.headers, self.timeout, False) # get the user data
+            resp = _makeHoneygainRequest("earnings/stats", "GET", self.headers, self.timeout, False) # get the user data
         
         try:
             jsonData = resp.json() # attempt to get the JSON data
@@ -95,9 +114,9 @@ class User:
         """
         
         if self.proxy != {}: # if we have a proxy
-            resp = makeHoneygainRequest("users/balances", "GET", self.headers, self.timeout, False, proxy=self.proxy) # get the money data with the proxy
+            resp = _makeHoneygainRequest("users/balances", "GET", self.headers, self.timeout, False, proxy=self.proxy) # get the money data with the proxy
         else:
-            resp = makeHoneygainRequest("users/balances", "GET", self.headers, self.timeout, False) # get the devuce data
+            resp = _makeHoneygainRequest("users/balances", "GET", self.headers, self.timeout, False) # get the devuce data
         
         try:
             jsonData = resp.json() # attempt to get the JSON data
@@ -112,9 +131,9 @@ class User:
         """
         
         if self.proxy != {}: # if we have a proxy
-            resp = makeHoneygainRequest("referrals/earnings", "GET", self.headers, self.timeout, False, proxy=self.proxy) # get the device data with the proxy
+            resp = _makeHoneygainRequest("referrals/earnings", "GET", self.headers, self.timeout, False, proxy=self.proxy) # get the device data with the proxy
         else:
-            resp = makeHoneygainRequest("referrals/earnings", "GET", self.headers, self.timeout, False) # get the device data
+            resp = _makeHoneygainRequest("referrals/earnings", "GET", self.headers, self.timeout, False) # get the device data
         
         try:
             jsonData = resp.json() # attempt to get the JSON data
@@ -129,9 +148,9 @@ class User:
         """
         
         if self.proxy != {}: # if we have a proxy
-            resp = makeHoneygainRequest("earnings/today", "GET", self.headers, self.timeout, False, proxy=self.proxy) # get the app version with the proxy
+            resp = _makeHoneygainRequest("earnings/today", "GET", self.headers, self.timeout, False, proxy=self.proxy) # get the app version with the proxy
         else:
-            resp = makeHoneygainRequest("earnings/today", "GET", self.headers, self.timeout, False) # get the version
+            resp = _makeHoneygainRequest("earnings/today", "GET", self.headers, self.timeout, False) # get the version
         
         try:
             jsonData = resp.json() # attempt to get the JSON data
@@ -146,9 +165,9 @@ class User:
         """
         
         if self.proxy != {}: # if we have a proxy
-            resp = makeHoneygainRequest("devices", "GET", self.headers, self.timeout, True, proxy=self.proxy) # get the devices with the proxy
+            resp = _makeHoneygainRequest("devices", "GET", self.headers, self.timeout, True, proxy=self.proxy) # get the devices with the proxy
         else:
-            resp = makeHoneygainRequest("devices", "GET", self.headers, self.timeout, True)
+            resp = _makeHoneygainRequest("devices", "GET", self.headers, self.timeout, True)
 
         try:
             jsonData = resp.json() # attempt to get the JSON data
